@@ -709,6 +709,17 @@
           <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
+
+      <p class="inputs-title" style="margin-top: 22px;">Votre profil</p>
+      <div class="input-row">
+        <button class="input-tile" id="ageTile" type="button">
+          <div class="label-group">
+            <div class="sub">Âge actuel</div>
+            <div><span class="val" id="ageValue">49</span><span class="unit"> ans</span></div>
+          </div>
+          <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -788,6 +799,32 @@
     </div>
 
     <button class="btn-primary" id="verUpdate" type="button">Mettre à jour</button>
+  </div>
+</div>
+
+<!-- Age modal -->
+<div class="modal-overlay" id="ageModal" role="dialog" aria-modal="true" aria-labelledby="ageTitle">
+  <div class="glass modal">
+    <button class="icon-btn close" id="closeAge" aria-label="Fermer" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h2 id="ageTitle">Votre âge</h2>
+    <p class="desc">Indiquez votre âge pour affiner les projections et les presets de retraite.</p>
+
+    <div class="amount-input-row">
+      <div class="amount-input">
+        <input type="number" id="ageAmount" min="18" max="80" step="1" />
+        <span class="euro" style="font-size:15px; letter-spacing:0.2px;">ans</span>
+      </div>
+      <button class="step-btn" id="ageMinus" aria-label="Diminuer" type="button">−</button>
+      <button class="step-btn" id="agePlus" aria-label="Augmenter" type="button">+</button>
+    </div>
+
+    <p style="font-size:13px; color:var(--c-text-mute); margin: 0 0 20px;">
+      Âge légal de la retraite : <strong id="retirementPreview">—</strong> ans dans <strong id="retirementYears">—</strong> ans
+    </p>
+
+    <button class="btn-primary" id="ageUpdate" type="button">Mettre à jour</button>
   </div>
 </div>
 
@@ -920,49 +957,58 @@
     const favUpper = series.map(s => s.p95);
     const expectedLine = series.map(s => s.expected);
 
+    // Stacked bands using fill:'-1' (each dataset fills to the one below it).
+    // Order: P5 (baseline) → P20 (yellow défavorable) → P80 (blue attendu) → P95 (dark favorable)
     const data = {
       labels,
       datasets: [
-        // Favorable (top): from P80 to P95  — dataset 0
+        // [0] P5 — transparent baseline (bottom of défavorable band)
         {
-          label: 'Favorable',
-          data: favUpper,
-          backgroundColor: 'rgba(61, 107, 135, 0.85)',
+          label: '_p5',
+          data: series.map(s => s.p5),
+          backgroundColor: 'transparent',
           borderColor: 'transparent',
-          borderWidth: 0,
-          pointRadius: 0,
-          fill: '-1',
-          tension: 0.35,
-        },
-        // Attendu (middle): from P20 to P80  — dataset 1
-        {
-          label: 'Attendu',
-          data: expUpper,
-          backgroundColor: 'rgba(156, 199, 232, 0.9)',
-          borderColor: 'transparent',
-          borderWidth: 0,
-          pointRadius: 0,
-          fill: '-1',
-          tension: 0.35,
-        },
-        // Défavorable (bottom): from 0 to P20  — dataset 2
-        {
-          label: 'Défavorable',
-          data: defUpper,
-          backgroundColor: 'rgba(245, 197, 66, 0.9)',
-          borderColor: 'transparent',
-          borderWidth: 0,
           pointRadius: 0,
           fill: 'origin',
           tension: 0.35,
         },
-        // Expected (dashed line) — dataset 3
+        // [1] P20 — fills between P5 and P20 = Défavorable (yellow)
         {
-          label: 'Attendu (médiane)',
-          data: expectedLine,
-          borderColor: 'rgba(30, 30, 30, 0.7)',
+          label: 'Défavorable',
+          data: series.map(s => s.p20),
+          backgroundColor: 'rgba(245, 197, 66, 0.92)',
+          borderColor: 'transparent',
+          pointRadius: 0,
+          fill: '-1',
+          tension: 0.35,
+        },
+        // [2] P80 — fills between P20 and P80 = Attendu (light blue)
+        {
+          label: 'Attendu',
+          data: series.map(s => s.p80),
+          backgroundColor: 'rgba(156, 199, 232, 0.92)',
+          borderColor: 'transparent',
+          pointRadius: 0,
+          fill: '-1',
+          tension: 0.35,
+        },
+        // [3] P95 — fills between P80 and P95 = Favorable (dark blue)
+        {
+          label: 'Favorable',
+          data: series.map(s => s.p95),
+          backgroundColor: 'rgba(61, 107, 135, 0.88)',
+          borderColor: 'transparent',
+          pointRadius: 0,
+          fill: '-1',
+          tension: 0.35,
+        },
+        // [4] Median expected line (dashed)
+        {
+          label: 'Médiane attendue',
+          data: series.map(s => s.expected),
+          borderColor: 'rgba(20, 20, 20, 0.75)',
           backgroundColor: 'transparent',
-          borderWidth: 2,
+          borderWidth: 2.5,
           borderDash: [6, 5],
           pointRadius: 0,
           fill: false,
@@ -970,57 +1016,6 @@
         },
       ],
     };
-
-    // Place datasets in stacking order: Favorable on top visually,
-    // but Chart.js draws in array order. We want:
-    //   draw Favorable (fills behind Attendu) -> Attendu -> Défavorable on top? No.
-    // Correct stacking: bottom band is Défavorable (0..P20), above it Attendu (P20..P80),
-    // above it Favorable (P80..P95). When painting, the foreground band should cover
-    // the background one it sits on. We want the chart to visually show all three bands.
-    // Simplest trick: draw Favorable as filled from origin to P95 (dark),
-    //                 then Attendu as filled from origin to P80 (light blue) covering part,
-    //                 then Défavorable as filled from origin to P20 (yellow) covering part.
-    // Reorder: paint largest first.
-    data.datasets = [
-      {
-        label: 'Favorable',
-        data: favUpper,
-        backgroundColor: 'rgba(61, 107, 135, 0.85)',
-        borderColor: 'transparent',
-        pointRadius: 0,
-        fill: 'origin',
-        tension: 0.35,
-      },
-      {
-        label: 'Attendu',
-        data: expUpper,
-        backgroundColor: 'rgba(156, 199, 232, 0.95)',
-        borderColor: 'transparent',
-        pointRadius: 0,
-        fill: 'origin',
-        tension: 0.35,
-      },
-      {
-        label: 'Défavorable',
-        data: defUpper,
-        backgroundColor: 'rgba(245, 197, 66, 0.95)',
-        borderColor: 'transparent',
-        pointRadius: 0,
-        fill: 'origin',
-        tension: 0.35,
-      },
-      {
-        label: 'Médiane attendue',
-        data: expectedLine,
-        borderColor: 'rgba(20, 20, 20, 0.75)',
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderDash: [6, 5],
-        pointRadius: 0,
-        fill: false,
-        tension: 0.35,
-      },
-    ];
 
     const config = {
       type: 'line',
@@ -1038,6 +1033,7 @@
             padding: 12,
             cornerRadius: 10,
             displayColors: true,
+            filter: (item) => item.dataset.label !== '_p5',
             callbacks: {
               title: (items) => {
                 const idx = items[0].dataIndex;
@@ -1046,15 +1042,15 @@
               label: (item) => {
                 const idx = item.dataIndex;
                 const s = series[idx];
-                if (item.dataset.label === 'Favorable') return `Favorable : ${fmtEUR.format(s.p80)} → ${fmtEUR.format(s.p95)}`;
-                if (item.dataset.label === 'Attendu')   return `Attendu : ${fmtEUR.format(s.p20)} → ${fmtEUR.format(s.p80)}`;
-                if (item.dataset.label === 'Défavorable') return `Défavorable : ${fmtEUR.format(s.p5)} → ${fmtEUR.format(s.p20)}`;
-                if (item.dataset.label === 'Médiane attendue') return `Médiane : ${fmtEUR.format(s.expected)}`;
-                return '';
+                if (item.dataset.label === 'Favorable')      return ` Favorable : ${fmtEUR.format(s.p80)} → ${fmtEUR.format(s.p95)}`;
+                if (item.dataset.label === 'Attendu')        return ` Attendu : ${fmtEUR.format(s.p20)} → ${fmtEUR.format(s.p80)}`;
+                if (item.dataset.label === 'Défavorable')    return ` Défavorable : ${fmtEUR.format(s.p5)} → ${fmtEUR.format(s.p20)}`;
+                if (item.dataset.label === 'Médiane attendue') return ` Médiane : ${fmtEUR.format(s.expected)}`;
+                return null;
               },
               afterBody: (items) => {
                 const idx = items[0].dataIndex;
-                return `Apports : ${fmtEUR.format(series[idx].apports)}`;
+                return [`Apports : ${fmtEUR.format(series[idx].apports)}`];
               },
             },
           },
@@ -1125,6 +1121,7 @@
     document.getElementById('capitalValue').textContent = fmtNum.format(state.startingAmount);
     document.getElementById('versementValue').textContent = fmtNum.format(state.contributionAmount);
     document.getElementById('versementUnit').textContent = freqLabel[state.frequency];
+    document.getElementById('ageValue').textContent = state.age;
 
     // Chart
     if (chart) {
@@ -1141,20 +1138,56 @@
     document.getElementById(id).classList.remove('open');
   }
 
+  // -------- Age modal --------
+  let ageDraft = state.age;
+
+  function renderAgeModal() {
+    document.getElementById('ageAmount').value = ageDraft;
+    const yearsToRetirement = Math.max(0, state.retirementAge - ageDraft);
+    document.getElementById('retirementPreview').textContent = state.retirementAge;
+    document.getElementById('retirementYears').textContent = yearsToRetirement;
+  }
+
+  document.getElementById('ageTile').addEventListener('click', () => {
+    ageDraft = state.age;
+    renderAgeModal();
+    openModal('ageModal');
+  });
+  document.getElementById('closeAge').addEventListener('click', () => closeModal('ageModal'));
+  document.getElementById('ageAmount').addEventListener('input', (e) => {
+    ageDraft = Math.min(80, Math.max(18, parseInt(e.target.value || '18', 10)));
+    renderAgeModal();
+  });
+  document.getElementById('agePlus').addEventListener('click', () => {
+    ageDraft = Math.min(80, ageDraft + 1);
+    renderAgeModal();
+  });
+  document.getElementById('ageMinus').addEventListener('click', () => {
+    ageDraft = Math.max(18, ageDraft - 1);
+    renderAgeModal();
+  });
+  document.getElementById('ageUpdate').addEventListener('click', () => {
+    state.age = ageDraft;
+    closeModal('ageModal');
+    render();
+  });
+
   // -------- Projection modal --------
-  const projPresets = [
-    { years: 5,  label: 'Dans 5 ans' },
-    { years: 10, label: 'Dans 10 ans' },
-    { years: 30, label: 'Dans 30 ans' },
-    { years: state.retirementAge - state.age, label: 'Âge légal de la retraite' },
-  ];
+  function getProjPresets() {
+    return [
+      { years: 5,  label: 'Dans 5 ans' },
+      { years: 10, label: 'Dans 10 ans' },
+      { years: 30, label: 'Dans 30 ans' },
+      { years: Math.max(1, state.retirementAge - state.age), label: 'Âge légal de la retraite' },
+    ];
+  }
 
   let projDraft = { selected: 'custom', years: state.years };
 
   function renderProjOptions() {
     const container = document.getElementById('projOptions');
     container.innerHTML = '';
-    projPresets.forEach((p, i) => {
+    getProjPresets().forEach((p, i) => {
       const el = document.createElement('div');
       const key = `preset-${i}`;
       const isSelected = projDraft.selected === key;
