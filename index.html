@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simulateur Assurance Vie — Profil Risqué ETF</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --c-def: #F5C542;
+    --c-exp: #9CC7E8;
+    --c-fav: #3D6B87;
+    --c-exp-line: #2E4F66;
+    --c-text: #1a1a1a;
+    --c-text-soft: #555;
+    --c-text-mute: #8a8a8a;
+    --c-line: rgba(0, 0, 0, 0.08);
+    --glass-bg: rgba(255, 255, 255, 0.55);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --glass-shadow: 0 20px 60px -20px rgba(31, 38, 135, 0.2), 0 8px 32px -8px rgba(31, 38, 135, 0.12);
+    --radius-lg: 28px;
+    --radius-md: 18px;
+    --radius-sm: 12px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--c-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 10% 10%, #ffd6e0 0%, transparent 40%),
+      radial-gradient(circle at 90% 20%, #c3e4ff 0%, transparent 45%),
+      radial-gradient(circle at 80% 90%, #ffe7b3 0%, transparent 40%),
+      radial-gradient(circle at 20% 80%, #d6ccff 0%, transparent 40%),
+      linear-gradient(135deg, #fef6f1 0%, #eef4fb 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    padding: 32px 16px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow-x: hidden;
+  }
+
+  body::before,
+  body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.5;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  body::before {
+    width: 520px;
+    height: 520px;
+    background: #ffb0c4;
+    top: -120px;
+    right: -160px;
+    animation: float1 18s ease-in-out infinite;
+  }
+
+  body::after {
+    width: 480px;
+    height: 480px;
+    background: #a9c9f0;
+    bottom: -160px;
+    left: -120px;
+    animation: float2 22s ease-in-out infinite;
+  }
+
+  @keyframes float1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-30px, 40px) scale(1.08); }
+  }
+
+  @keyframes float2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(40px, -30px) scale(1.1); }
+  }
+
+  .app {
+    width: 100%;
+    max-width: 860px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 28px;
+  }
+
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+    color: var(--c-text);
+  }
+
+  .icon-btn:hover { background: rgba(255, 255, 255, 0.95); transform: scale(1.05); }
+  .icon-btn:active { transform: scale(0.96); }
+
+  .topbar h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 500;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+
+  .topbar .spacer { width: 44px; }
+
+  /* ---------- Main card ---------- */
+  .card {
+    padding: 32px 32px 28px;
+  }
+
+  .summary {
+    margin-bottom: 20px;
+  }
+
+  .summary .label {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--c-text);
+    margin: 0 0 6px;
+    font-family: 'Playfair Display', serif;
+  }
+
+  .summary .amount-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .summary .amount {
+    font-family: 'Playfair Display', serif;
+    font-size: 44px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+  }
+
+  .summary .year-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    font-weight: 500;
+    color: var(--c-text);
+    background: transparent;
+    border: none;
+    padding: 6px 8px 6px 0;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+  }
+
+  .summary .year-btn:hover { background: rgba(255, 255, 255, 0.5); }
+
+  .summary .year-btn svg { transition: transform 0.2s ease; }
+  .summary .year-btn:hover svg { transform: translateY(2px); }
+
+  /* ---------- Chart ---------- */
+  .chart-wrap {
+    position: relative;
+    height: 340px;
+    margin: 10px 0 4px;
+  }
+
+  .apports {
+    text-align: center;
+    color: var(--c-text-mute);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  /* ---------- Legend ---------- */
+  .legend {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 24px;
+    padding: 20px 12px 12px;
+    border-top: 1px solid var(--c-line);
+  }
+
+  .legend-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 0 8px;
+  }
+
+  .legend-item .dot-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .legend-item .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-item .range {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--c-text);
+  }
+
+  .legend-item .scenario {
+    font-size: 13px;
+    color: var(--c-text-mute);
+    margin-left: 18px;
+  }
+
+  /* ---------- Inputs section ---------- */
+  .inputs-title {
+    font-size: 14px;
+    color: var(--c-text-mute);
+    margin: 4px 0 12px;
+  }
+
+  .input-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .input-tile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 18px;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+    color: inherit;
+  }
+
+  .input-tile:hover { background: rgba(255, 255, 255, 0.85); transform: translateY(-2px); }
+  .input-tile:active { transform: translateY(0); }
+
+  .input-tile .label-group .sub {
+    font-size: 13px;
+    color: var(--c-text-mute);
+    margin-bottom: 4px;
+  }
+
+  .input-tile .label-group .val {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .input-tile .label-group .unit {
+    font-size: 15px;
+    color: var(--c-text-mute);
+    margin-left: 2px;
+  }
+
+  .input-tile .chev {
+    color: var(--c-text-mute);
+  }
+
+  /* ---------- Info block ---------- */
+  .info-card {
+    padding: 28px 32px;
+  }
+
+  .info-card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    margin: 0 0 12px;
+    font-weight: 500;
+  }
+
+  .info-card p {
+    margin: 0 0 10px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--c-text-soft);
+  }
+
+  .info-card .chance-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .info-card .chance {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .info-card .chance .title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .info-card .chance .pct {
+    font-size: 13px;
+    color: var(--c-text-mute);
+  }
+
+  .info-card .note {
+    font-size: 13px;
+    color: var(--c-text-soft);
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    margin-top: 8px;
+  }
+
+  .info-card .section-title {
+    font-weight: 600;
+    margin-top: 18px;
+    margin-bottom: 6px;
+    font-size: 15px;
+  }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 30, 50, 0.35);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal {
+    width: 100%;
+    max-width: 520px;
+    padding: 28px 28px 24px;
+    position: relative;
+    animation: slideUp 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal .close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+  }
+
+  .modal h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    margin: 0 0 6px;
+    font-weight: 500;
+  }
+
+  .modal .desc {
+    font-size: 14px;
+    color: var(--c-text-soft);
+    margin: 0 0 22px;
+  }
+
+  /* ---------- Projection modal ---------- */
+  .proj-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .proj-option:hover { background: rgba(255, 255, 255, 0.8); }
+  .proj-option.selected { border-color: var(--c-text); background: rgba(255, 255, 255, 0.85); }
+
+  .proj-option .radio {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid #bbb;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: grid;
+    place-items: center;
+    transition: all 0.2s ease;
+  }
+
+  .proj-option.selected .radio {
+    border-color: var(--c-text);
+    background: var(--c-text);
+  }
+
+  .proj-option.selected .radio::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
+  }
+
+  .proj-option .titles {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .proj-option .titles .t {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 2px;
+  }
+
+  .proj-option .titles .s {
+    font-size: 13px;
+    color: var(--c-text-mute);
+  }
+
+  .proj-option .slider-wrap {
+    margin-top: 12px;
+    padding-right: 6px;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, var(--c-text) 0%, var(--c-text) var(--pct, 50%), #d6d6d6 var(--pct, 50%), #d6d6d6 100%);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--c-text);
+    cursor: grab;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--c-text);
+    border: none;
+    cursor: grab;
+  }
+
+  /* ---------- Versement modal ---------- */
+  .amount-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .amount-input {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 16px;
+    padding: 14px 20px;
+  }
+
+  .amount-input input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+    font-size: 22px;
+    font-weight: 500;
+    min-width: 0;
+    color: var(--c-text);
+  }
+
+  .amount-input .euro {
+    font-size: 18px;
+    color: var(--c-text-mute);
+  }
+
+  .step-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+    transition: all 0.2s ease;
+    color: var(--c-text);
+  }
+
+  .step-btn:hover { background: rgba(255, 255, 255, 0.95); }
+  .step-btn:active { transform: scale(0.94); }
+
+  .freq-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .pill {
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--c-text-soft);
+    transition: all 0.2s ease;
+  }
+
+  .pill:hover { background: rgba(255, 255, 255, 0.85); }
+  .pill.active { background: var(--c-text); color: #fff; }
+
+  /* ---------- Starting capital modal ---------- */
+  .cap-label {
+    font-size: 13px;
+    color: var(--c-text-mute);
+    margin-bottom: 8px;
+  }
+
+  /* ---------- Primary button ---------- */
+  .btn-primary {
+    width: 100%;
+    padding: 18px 24px;
+    border-radius: 999px;
+    border: none;
+    background: var(--c-text);
+    color: #fff;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.3); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 640px) {
+    body { padding: 12px 8px; }
+    .card { padding: 22px 20px 20px; }
+    .topbar { padding: 16px 20px; }
+    .summary .amount { font-size: 34px; }
+    .summary .year-btn { font-size: 22px; }
+    .legend { grid-template-columns: 1fr; gap: 8px; }
+    .info-card { padding: 22px 20px; }
+    .info-card .chance-row { grid-template-columns: 1fr; }
+    .chart-wrap { height: 280px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Top bar -->
+  <div class="glass topbar">
+    <button class="icon-btn" aria-label="Retour" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+    <h1>Simulation</h1>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- Main card -->
+  <div class="glass card">
+    <div class="summary">
+      <p class="label">Vos gains pourraient être de</p>
+      <div class="amount-row">
+        <span class="amount" id="amountExpected">—</span>
+        <span class="amount" style="font-size: 30px; color: var(--c-text-soft);">en</span>
+        <button class="year-btn" id="yearBtn" type="button">
+          <span id="yearLabel">—</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+
+    <p class="apports">Apports : <span id="apportsVal">—</span></p>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="dot-row">
+          <span class="dot" style="background: var(--c-def);"></span>
+          <span class="range" id="rangeDef">—</span>
+        </div>
+        <span class="scenario">Défavorable</span>
+      </div>
+      <div class="legend-item">
+        <div class="dot-row">
+          <span class="dot" style="background: var(--c-exp);"></span>
+          <span class="range" id="rangeExp">—</span>
+        </div>
+        <span class="scenario">Attendu</span>
+      </div>
+      <div class="legend-item">
+        <div class="dot-row">
+          <span class="dot" style="background: var(--c-fav);"></span>
+          <span class="range" id="rangeFav">—</span>
+        </div>
+        <span class="scenario">Favorable</span>
+      </div>
+    </div>
+
+    <div style="margin-top: 28px;">
+      <p class="inputs-title">Ajoutez / Modifiez votre capital de départ</p>
+      <div class="input-row">
+        <button class="input-tile" id="capitalTile" type="button">
+          <div class="label-group">
+            <div class="sub">Capital de départ</div>
+            <div><span class="val" id="capitalValue">1 000</span><span class="unit">€</span></div>
+          </div>
+          <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+
+      <p class="inputs-title" style="margin-top: 22px;">Ajoutez / Modifiez un versement programmé</p>
+      <div class="input-row">
+        <button class="input-tile" id="versementTile" type="button">
+          <div class="label-group">
+            <div class="sub">Versement Programmé</div>
+            <div><span class="val" id="versementValue">500</span><span class="unit" id="versementUnit">€/mois</span></div>
+          </div>
+          <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projetez-vous info -->
+  <div class="glass info-card">
+    <h2>Projetez-vous</h2>
+    <p>Testez 3 scénarios de performance basés sur votre encours et vos futurs versements :</p>
+    <div class="chance-row">
+      <div class="chance">
+        <div class="title"><span class="dot" style="background: var(--c-def); width: 10px; height: 10px; border-radius: 50%;"></span>Défavorable</div>
+        <div class="pct">(15 % de chance)</div>
+      </div>
+      <div class="chance">
+        <div class="title"><span class="dot" style="background: var(--c-exp); width: 10px; height: 10px; border-radius: 50%;"></span>Attendu</div>
+        <div class="pct">(60 % de chance)</div>
+      </div>
+      <div class="chance">
+        <div class="title"><span class="dot" style="background: var(--c-fav); width: 10px; height: 10px; border-radius: 50%;"></span>Favorable</div>
+        <div class="pct">(15 % de chance)</div>
+      </div>
+    </div>
+    <div class="note">
+      <strong>Note :</strong> La probabilité d'être au-dessus du scénario favorable est de 5 %, la probabilité d'être en-dessous du scénario défavorable est de 5 %.
+    </div>
+    <div class="section-title">Sources et méthodologie</div>
+    <p>Ces projections sont basées sur des simulations probabilistes de grandes classes d'actifs. Les hypothèses retenues pour un <strong>profil risqué 100 % ETF avec arbitrage piloté payant</strong> (type Yomoni P10) sont :</p>
+    <p>
+      • Rendement brut annuel espéré : <strong>7,5 %</strong><br />
+      • Frais annuels totaux : <strong>1,6 %</strong> (0,6 % mandat + 0,3 % assurance + 0,7 % ETF)<br />
+      • Rendement net annuel espéré : <strong>5,9 %</strong><br />
+      • Volatilité annuelle : <strong>15 %</strong>
+    </p>
+    <p style="color: var(--c-text-mute); font-size: 12px; margin-top: 10px;">
+      Modèle lognormal avec contributions périodiques, corrélées au marché. Les scénarios défavorable et favorable sont définis par les percentiles P5-P20 et P80-P95 respectivement.
+    </p>
+  </div>
+</div>
+
+<!-- Projection modal -->
+<div class="modal-overlay" id="projectionModal" role="dialog" aria-modal="true" aria-labelledby="projTitle">
+  <div class="glass modal">
+    <button class="icon-btn close" id="closeProjection" aria-label="Fermer" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h2 id="projTitle">Projection</h2>
+    <p class="desc">Vous pouvez modifier la plage de temps afin de mieux vous projeter.</p>
+
+    <div id="projOptions"></div>
+
+    <button class="btn-primary" id="projUpdate" disabled type="button">Mettre à jour</button>
+  </div>
+</div>
+
+<!-- Versement modal -->
+<div class="modal-overlay" id="versementModal" role="dialog" aria-modal="true" aria-labelledby="verTitle">
+  <div class="glass modal">
+    <button class="icon-btn close" id="closeVersement" aria-label="Fermer" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h2 id="verTitle">Versement Programmé</h2>
+    <p class="desc">Ajoutez ou modifiez votre versement programmé.</p>
+
+    <div class="amount-input-row">
+      <div class="amount-input">
+        <input type="number" id="verAmount" min="0" step="50" />
+        <span class="euro">€</span>
+      </div>
+      <button class="step-btn" id="verMinus" aria-label="Diminuer" type="button">−</button>
+      <button class="step-btn" id="verPlus" aria-label="Augmenter" type="button">+</button>
+    </div>
+
+    <div class="freq-pills" id="freqPills">
+      <button class="pill" data-freq="mensuelle" type="button">Mensuelle</button>
+      <button class="pill" data-freq="trimestrielle" type="button">Trimestrielle</button>
+      <button class="pill" data-freq="semestrielle" type="button">Semestrielle</button>
+      <button class="pill" data-freq="annuelle" type="button">Annuelle</button>
+    </div>
+
+    <button class="btn-primary" id="verUpdate" type="button">Mettre à jour</button>
+  </div>
+</div>
+
+<!-- Capital modal -->
+<div class="modal-overlay" id="capitalModal" role="dialog" aria-modal="true" aria-labelledby="capTitle">
+  <div class="glass modal">
+    <button class="icon-btn close" id="closeCapital" aria-label="Fermer" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h2 id="capTitle">Capital de départ</h2>
+    <p class="desc">Définissez le montant initial placé sur votre assurance vie.</p>
+
+    <div class="amount-input-row">
+      <div class="amount-input">
+        <input type="number" id="capAmount" min="0" step="500" />
+        <span class="euro">€</span>
+      </div>
+      <button class="step-btn" id="capMinus" aria-label="Diminuer" type="button">−</button>
+      <button class="step-btn" id="capPlus" aria-label="Augmenter" type="button">+</button>
+    </div>
+
+    <button class="btn-primary" id="capUpdate" type="button">Mettre à jour</button>
+  </div>
+</div>
+
+<script>
+  // -------- State --------
+  const state = {
+    startingAmount: 1000,
+    contributionAmount: 500,
+    frequency: 'mensuelle', // mensuelle | trimestrielle | semestrielle | annuelle
+    years: 18,
+    age: 49,            // current age (for retirement preset)
+    retirementAge: 62,
+    // Yomoni Profil 10 — Risky, 100% ETF, arbitrage piloté payant
+    grossReturn: 0.075,
+    fees: 0.016,
+    volatility: 0.15,
+  };
+
+  const freqToAnnual = {
+    mensuelle: 12,
+    trimestrielle: 4,
+    semestrielle: 2,
+    annuelle: 1,
+  };
+
+  const freqLabel = {
+    mensuelle: '€/mois',
+    trimestrielle: '€/trim',
+    semestrielle: '€/sem',
+    annuelle: '€/an',
+  };
+
+  // Percentile z-scores (inverse normal CDF)
+  const Z = {
+    p5: -1.6449,
+    p20: -0.8416,
+    p80: +0.8416,
+    p95: +1.6449,
+  };
+
+  // -------- Simulation --------
+  function simulate() {
+    const r = state.grossReturn - state.fees;           // net annual return
+    const sigma = state.volatility;
+    const annualContrib = state.contributionAmount * freqToAnnual[state.frequency];
+    const T = state.years;
+
+    const series = [];
+    for (let t = 0; t <= T; t++) {
+      // Deterministic expected (median-ish) value
+      let expected;
+      if (r === 0) {
+        expected = state.startingAmount + annualContrib * t;
+      } else {
+        expected = state.startingAmount * Math.pow(1 + r, t) + annualContrib * (Math.pow(1 + r, t) - 1) / r;
+      }
+
+      // Effective holding period (weighted mean of time invested per euro)
+      // For starting capital V0 (held t years) and continuous DCA (avg held t/2):
+      // t_eff = (V0*t + annualContrib * t*t/2) / (V0 + annualContrib * t)
+      const totalInvested = state.startingAmount + annualContrib * t;
+      let tEff;
+      if (totalInvested <= 0 || t === 0) {
+        tEff = 0;
+      } else {
+        tEff = (state.startingAmount * t + annualContrib * t * t / 2) / totalInvested;
+      }
+
+      const sigmaEff = sigma * Math.sqrt(tEff);
+
+      // Lognormal percentiles around expected value
+      // V_p = expected * exp(z * sigma_eff - 0.5 * sigma_eff^2)
+      const halfVar = 0.5 * sigmaEff * sigmaEff;
+      const p5  = expected * Math.exp(Z.p5  * sigmaEff - halfVar);
+      const p20 = expected * Math.exp(Z.p20 * sigmaEff - halfVar);
+      const p80 = expected * Math.exp(Z.p80 * sigmaEff - halfVar);
+      const p95 = expected * Math.exp(Z.p95 * sigmaEff - halfVar);
+
+      series.push({
+        t,
+        year: new Date().getFullYear() + t,
+        apports: totalInvested,
+        expected,
+        p5, p20, p80, p95,
+      });
+    }
+    return series;
+  }
+
+  // -------- Formatting --------
+  const fmtEUR = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+  const fmtNum = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+
+  function fmtK(v) {
+    if (v >= 1000) return Math.round(v / 1000) + 'k€';
+    return Math.round(v) + '€';
+  }
+
+  // -------- Chart --------
+  let chart;
+
+  function buildChart(series) {
+    const ctx = document.getElementById('chart').getContext('2d');
+    const labels = series.map(s => s.t === 0 ? "Aujourd'hui" : (s.t === series.length - 1 ? String(s.year) : ''));
+
+    const defUpper = series.map(s => s.p20);
+    const expUpper = series.map(s => s.p80);
+    const favUpper = series.map(s => s.p95);
+    const expectedLine = series.map(s => s.expected);
+
+    const data = {
+      labels,
+      datasets: [
+        // Favorable (top): from P80 to P95  — dataset 0
+        {
+          label: 'Favorable',
+          data: favUpper,
+          backgroundColor: 'rgba(61, 107, 135, 0.85)',
+          borderColor: 'transparent',
+          borderWidth: 0,
+          pointRadius: 0,
+          fill: '-1',
+          tension: 0.35,
+        },
+        // Attendu (middle): from P20 to P80  — dataset 1
+        {
+          label: 'Attendu',
+          data: expUpper,
+          backgroundColor: 'rgba(156, 199, 232, 0.9)',
+          borderColor: 'transparent',
+          borderWidth: 0,
+          pointRadius: 0,
+          fill: '-1',
+          tension: 0.35,
+        },
+        // Défavorable (bottom): from 0 to P20  — dataset 2
+        {
+          label: 'Défavorable',
+          data: defUpper,
+          backgroundColor: 'rgba(245, 197, 66, 0.9)',
+          borderColor: 'transparent',
+          borderWidth: 0,
+          pointRadius: 0,
+          fill: 'origin',
+          tension: 0.35,
+        },
+        // Expected (dashed line) — dataset 3
+        {
+          label: 'Attendu (médiane)',
+          data: expectedLine,
+          borderColor: 'rgba(30, 30, 30, 0.7)',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [6, 5],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.35,
+        },
+      ],
+    };
+
+    // Place datasets in stacking order: Favorable on top visually,
+    // but Chart.js draws in array order. We want:
+    //   draw Favorable (fills behind Attendu) -> Attendu -> Défavorable on top? No.
+    // Correct stacking: bottom band is Défavorable (0..P20), above it Attendu (P20..P80),
+    // above it Favorable (P80..P95). When painting, the foreground band should cover
+    // the background one it sits on. We want the chart to visually show all three bands.
+    // Simplest trick: draw Favorable as filled from origin to P95 (dark),
+    //                 then Attendu as filled from origin to P80 (light blue) covering part,
+    //                 then Défavorable as filled from origin to P20 (yellow) covering part.
+    // Reorder: paint largest first.
+    data.datasets = [
+      {
+        label: 'Favorable',
+        data: favUpper,
+        backgroundColor: 'rgba(61, 107, 135, 0.85)',
+        borderColor: 'transparent',
+        pointRadius: 0,
+        fill: 'origin',
+        tension: 0.35,
+      },
+      {
+        label: 'Attendu',
+        data: expUpper,
+        backgroundColor: 'rgba(156, 199, 232, 0.95)',
+        borderColor: 'transparent',
+        pointRadius: 0,
+        fill: 'origin',
+        tension: 0.35,
+      },
+      {
+        label: 'Défavorable',
+        data: defUpper,
+        backgroundColor: 'rgba(245, 197, 66, 0.95)',
+        borderColor: 'transparent',
+        pointRadius: 0,
+        fill: 'origin',
+        tension: 0.35,
+      },
+      {
+        label: 'Médiane attendue',
+        data: expectedLine,
+        borderColor: 'rgba(20, 20, 20, 0.75)',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderDash: [6, 5],
+        pointRadius: 0,
+        fill: false,
+        tension: 0.35,
+      },
+    ];
+
+    const config = {
+      type: 'line',
+      data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(20, 20, 30, 0.92)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            padding: 12,
+            cornerRadius: 10,
+            displayColors: true,
+            callbacks: {
+              title: (items) => {
+                const idx = items[0].dataIndex;
+                return series[idx].t === 0 ? "Aujourd'hui" : `En ${series[idx].year}`;
+              },
+              label: (item) => {
+                const idx = item.dataIndex;
+                const s = series[idx];
+                if (item.dataset.label === 'Favorable') return `Favorable : ${fmtEUR.format(s.p80)} → ${fmtEUR.format(s.p95)}`;
+                if (item.dataset.label === 'Attendu')   return `Attendu : ${fmtEUR.format(s.p20)} → ${fmtEUR.format(s.p80)}`;
+                if (item.dataset.label === 'Défavorable') return `Défavorable : ${fmtEUR.format(s.p5)} → ${fmtEUR.format(s.p20)}`;
+                if (item.dataset.label === 'Médiane attendue') return `Médiane : ${fmtEUR.format(s.expected)}`;
+                return '';
+              },
+              afterBody: (items) => {
+                const idx = items[0].dataIndex;
+                return `Apports : ${fmtEUR.format(series[idx].apports)}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: {
+              color: 'rgba(0,0,0,0.55)',
+              font: { family: 'Inter', size: 12 },
+              maxRotation: 0,
+              autoSkip: false,
+              callback: function (val, index) {
+                if (index === 0) return "Aujourd'hui";
+                if (index === series.length - 1) return String(series[series.length - 1].year);
+                return '';
+              },
+            },
+            border: { display: false },
+          },
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(0,0,0,0.08)',
+              drawBorder: false,
+              borderDash: [4, 4],
+            },
+            border: { display: false },
+            ticks: {
+              color: 'rgba(0,0,0,0.55)',
+              font: { family: 'Inter', size: 12 },
+              callback: (v) => fmtK(v),
+            },
+          },
+        },
+        onClick: (evt, elements) => {
+          const xScale = chart.scales.x;
+          const canvasPos = Chart.helpers.getRelativePosition(evt, chart);
+          const idx = Math.round(xScale.getValueForPixel(canvasPos.x));
+          if (idx >= 0 && idx < series.length) {
+            state.years = idx === 0 ? 1 : idx;
+            if (state.years < 1) state.years = 1;
+            openProjectionModal();
+          }
+        },
+      },
+    };
+
+    chart = new Chart(ctx, config);
+  }
+
+  // -------- Render --------
+  function render() {
+    const series = simulate();
+    const last = series[series.length - 1];
+
+    // Summary
+    document.getElementById('amountExpected').textContent = fmtEUR.format(last.expected);
+    document.getElementById('yearLabel').textContent = String(last.year);
+    document.getElementById('apportsVal').textContent = fmtEUR.format(last.apports);
+
+    // Legend ranges
+    document.getElementById('rangeDef').textContent = `${fmtK(last.p5)} – ${fmtK(last.p20)}`;
+    document.getElementById('rangeExp').textContent = `${fmtK(last.p20)} – ${fmtK(last.p80)}`;
+    document.getElementById('rangeFav').textContent = `${fmtK(last.p80)} – ${fmtK(last.p95)}`;
+
+    // Inputs
+    document.getElementById('capitalValue').textContent = fmtNum.format(state.startingAmount);
+    document.getElementById('versementValue').textContent = fmtNum.format(state.contributionAmount);
+    document.getElementById('versementUnit').textContent = freqLabel[state.frequency];
+
+    // Chart
+    if (chart) {
+      chart.destroy();
+    }
+    buildChart(series);
+  }
+
+  // -------- Modal helpers --------
+  function openModal(id) {
+    document.getElementById(id).classList.add('open');
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  // -------- Projection modal --------
+  const projPresets = [
+    { years: 5,  label: 'Dans 5 ans' },
+    { years: 10, label: 'Dans 10 ans' },
+    { years: 30, label: 'Dans 30 ans' },
+    { years: state.retirementAge - state.age, label: 'Âge légal de la retraite' },
+  ];
+
+  let projDraft = { selected: 'custom', years: state.years };
+
+  function renderProjOptions() {
+    const container = document.getElementById('projOptions');
+    container.innerHTML = '';
+    projPresets.forEach((p, i) => {
+      const el = document.createElement('div');
+      const key = `preset-${i}`;
+      const isSelected = projDraft.selected === key;
+      el.className = 'proj-option' + (isSelected ? ' selected' : '');
+      el.innerHTML = `
+        <div class="radio"></div>
+        <div class="titles">
+          <div class="t">${p.label}</div>
+          <div class="s">Vous aurez ${state.age + p.years} ans</div>
+        </div>`;
+      el.addEventListener('click', () => {
+        projDraft = { selected: key, years: p.years };
+        renderProjOptions();
+        updateProjButton();
+      });
+      container.appendChild(el);
+    });
+
+    // Custom slider
+    const custom = document.createElement('div');
+    const isCustom = projDraft.selected === 'custom';
+    custom.className = 'proj-option' + (isCustom ? ' selected' : '');
+    const ageAtCustom = state.age + projDraft.years;
+    custom.innerHTML = `
+      <div class="radio"></div>
+      <div class="titles" style="width:100%;">
+        <div class="t">Choisissez l'année</div>
+        <div class="s">Vous aurez ${ageAtCustom} ans — dans ${projDraft.years} ans (${new Date().getFullYear() + projDraft.years})</div>
+        <div class="slider-wrap">
+          <input type="range" id="projSlider" min="1" max="50" value="${projDraft.years}" />
+        </div>
+      </div>`;
+    custom.addEventListener('click', (e) => {
+      if (e.target.tagName.toLowerCase() === 'input') return;
+      projDraft.selected = 'custom';
+      renderProjOptions();
+      updateProjButton();
+    });
+    container.appendChild(custom);
+
+    const slider = document.getElementById('projSlider');
+    const pct = ((projDraft.years - 1) / 49) * 100;
+    slider.style.setProperty('--pct', pct + '%');
+
+    slider.addEventListener('input', (e) => {
+      projDraft.selected = 'custom';
+      projDraft.years = parseInt(e.target.value, 10);
+      renderProjOptions();
+      updateProjButton();
+    });
+  }
+
+  function updateProjButton() {
+    document.getElementById('projUpdate').disabled = (projDraft.years === state.years && projDraft.selected !== null) ? false : false;
+    // Always enabled — it updates state.years
+    document.getElementById('projUpdate').disabled = false;
+  }
+
+  function openProjectionModal() {
+    projDraft = { selected: 'custom', years: state.years };
+    renderProjOptions();
+    updateProjButton();
+    openModal('projectionModal');
+  }
+
+  document.getElementById('yearBtn').addEventListener('click', openProjectionModal);
+  document.getElementById('closeProjection').addEventListener('click', () => closeModal('projectionModal'));
+  document.getElementById('projUpdate').addEventListener('click', () => {
+    state.years = Math.max(1, Math.min(60, projDraft.years));
+    closeModal('projectionModal');
+    render();
+  });
+
+  // -------- Versement modal --------
+  let verDraft = { amount: state.contributionAmount, frequency: state.frequency };
+
+  function renderVerModal() {
+    document.getElementById('verAmount').value = verDraft.amount;
+    document.querySelectorAll('#freqPills .pill').forEach(p => {
+      p.classList.toggle('active', p.dataset.freq === verDraft.frequency);
+    });
+  }
+
+  document.getElementById('versementTile').addEventListener('click', () => {
+    verDraft = { amount: state.contributionAmount, frequency: state.frequency };
+    renderVerModal();
+    openModal('versementModal');
+  });
+  document.getElementById('closeVersement').addEventListener('click', () => closeModal('versementModal'));
+
+  document.getElementById('verAmount').addEventListener('input', (e) => {
+    verDraft.amount = Math.max(0, parseInt(e.target.value || '0', 10));
+  });
+  document.getElementById('verPlus').addEventListener('click', () => {
+    verDraft.amount = Math.max(0, (verDraft.amount || 0) + 50);
+    renderVerModal();
+  });
+  document.getElementById('verMinus').addEventListener('click', () => {
+    verDraft.amount = Math.max(0, (verDraft.amount || 0) - 50);
+    renderVerModal();
+  });
+  document.querySelectorAll('#freqPills .pill').forEach(p => {
+    p.addEventListener('click', () => {
+      verDraft.frequency = p.dataset.freq;
+      renderVerModal();
+    });
+  });
+  document.getElementById('verUpdate').addEventListener('click', () => {
+    state.contributionAmount = verDraft.amount;
+    state.frequency = verDraft.frequency;
+    closeModal('versementModal');
+    render();
+  });
+
+  // -------- Capital modal --------
+  let capDraft = state.startingAmount;
+
+  function renderCapModal() {
+    document.getElementById('capAmount').value = capDraft;
+  }
+
+  document.getElementById('capitalTile').addEventListener('click', () => {
+    capDraft = state.startingAmount;
+    renderCapModal();
+    openModal('capitalModal');
+  });
+  document.getElementById('closeCapital').addEventListener('click', () => closeModal('capitalModal'));
+  document.getElementById('capAmount').addEventListener('input', (e) => {
+    capDraft = Math.max(0, parseInt(e.target.value || '0', 10));
+  });
+  document.getElementById('capPlus').addEventListener('click', () => { capDraft = Math.max(0, capDraft + 500); renderCapModal(); });
+  document.getElementById('capMinus').addEventListener('click', () => { capDraft = Math.max(0, capDraft - 500); renderCapModal(); });
+  document.getElementById('capUpdate').addEventListener('click', () => {
+    state.startingAmount = capDraft;
+    closeModal('capitalModal');
+    render();
+  });
+
+  // Dismiss modal on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+  });
+
+  // Escape key closes modals
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+    }
+  });
+
+  // -------- Init --------
+  render();
+</script>
+</body>
+</html>
