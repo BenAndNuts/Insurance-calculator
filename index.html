@@ -857,7 +857,7 @@
     contributionAmount: 500,
     frequency: 'mensuelle', // mensuelle | trimestrielle | semestrielle | annuelle
     years: 18,
-    age: 49,            // current age (for retirement preset)
+    age: 20,            // current age (for retirement preset)
     retirementAge: 62,
     // Yomoni Profil 10 — Risky, 100% ETF, arbitrage piloté payant
     grossReturn: 0.075,
@@ -1141,11 +1141,15 @@
   // -------- Age modal --------
   let ageDraft = state.age;
 
-  function renderAgeModal() {
-    document.getElementById('ageAmount').value = ageDraft;
+  function updateAgePreview() {
     const yearsToRetirement = Math.max(0, state.retirementAge - ageDraft);
     document.getElementById('retirementPreview').textContent = state.retirementAge;
     document.getElementById('retirementYears').textContent = yearsToRetirement;
+  }
+
+  function renderAgeModal() {
+    document.getElementById('ageAmount').value = ageDraft;
+    updateAgePreview();
   }
 
   document.getElementById('ageTile').addEventListener('click', () => {
@@ -1155,8 +1159,17 @@
   });
   document.getElementById('closeAge').addEventListener('click', () => closeModal('ageModal'));
   document.getElementById('ageAmount').addEventListener('input', (e) => {
-    ageDraft = Math.min(80, Math.max(18, parseInt(e.target.value || '18', 10)));
-    renderAgeModal();
+    const v = parseInt(e.target.value, 10);
+    if (!isNaN(v)) {
+      ageDraft = Math.min(80, Math.max(18, v));
+      updateAgePreview(); // only update the preview text, not the input value
+    }
+  });
+  document.getElementById('ageAmount').addEventListener('blur', (e) => {
+    const v = parseInt(e.target.value, 10);
+    ageDraft = isNaN(v) ? state.age : Math.min(80, Math.max(18, v));
+    document.getElementById('ageAmount').value = ageDraft; // clamp on blur
+    updateAgePreview();
   });
   document.getElementById('agePlus').addEventListener('click', () => {
     ageDraft = Math.min(80, ageDraft + 1);
